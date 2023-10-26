@@ -1,6 +1,7 @@
 import streamlit as st
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
+import io
 
 # loading unstructured files of all sorts as LangChain Documents
 def load_document(file):
@@ -29,7 +30,7 @@ def ask_and_get_answer(vector_store, q, k=3):
     from langchain.chains import RetrievalQA
     from langchain.chat_models import ChatOpenAI
 
-    llm = ChatOpenAI(model='gpt-4', temperature=1)
+    llm = ChatOpenAI(model='gpt-4', temperature=1, max_tokens= None)
     retriever = vector_store.as_retriever(search_type='similarity', search_kwargs={'k': k})
     chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
 
@@ -83,10 +84,51 @@ if __name__ == "__main__":
     
     # two images in sidebar next to each other
     col1, col2 = st.sidebar.columns(2)
-    col1.image('images/OpenAI_logo.png')
-    col2.image('images/langchain-chroma-light.png')
+    #col1.image('images/OpenAI_logo.png')
+    #col2.image('images/langchain-chroma-light.png')
 
-    st.header('LLM Question-Answering Application')
+    #st.header('LLM Question-Answering Application')
+    #st.image('directv_hz_rgb_pos.png')
+    st.image('directv_hz_rgb_pos.png', caption=None, width=200, use_column_width=200, clamp=True, channels="RGB", output_format="auto")
+    st.divider()
+    uploaded_files = st.file_uploader('', accept_multiple_files=True)
+    #add_data = st.button('Upload Transcripts')
+    
+    # Assining Prompt file to var
+    text1_buffer = io.BytesIO()
+    with open('Prompt_Ver_1_2.txt','rb') as file1:
+        text1_buffer.write(file1.read())
+    
+    import pandas as pd
+    import numpy as np
+    #df = pd.DataFrame(np.random.randn(10, 5), columns=("col %d" % i for i in range(5)))
+    
+    #df = pd.DataFrame([[prompt, output]], columns=["Prompt", "Output"])
+    table = [['Name', 'Age'], ['John Doe', 30], ['Jane Doe', 25]]
+# Draw the table
+    st.table(table)
+    #st.table(df)
+    #st.title("QUALITATIVE INSIGHTS")
+    #else:
+
+    text1_buffer = text1_buffer.getvalue()
+    text1 = text1_buffer.decode('utf-8')
+    #text2_buffer = text2_buffer.getvalue()
+    #text2 = text2_buffer.decode('utf-8')
+
+        # add data button widget
+    add_data = None
+        # Upload Button impl
+    if 'button' not in st.session_state:
+        st.session_state.button = False
+
+    def click_button():
+        st.session_state.button = not st.session_state.button
+
+    #st.button('Upload Transcripts', on_click=click_button)
+
+    
+
     with st.sidebar:
         # text_input for the OpenAI API key
         api_key = st.text_input('Your OpenAI API Key:', type='password')
@@ -100,7 +142,7 @@ if __name__ == "__main__":
 
 
         # file uploader widget
-        uploaded_files = st.file_uploader('Upload any file format with text to analyze:', accept_multiple_files=True)
+        #uploaded_files = st.file_uploader('Upload any file format with text to analyze:', accept_multiple_files=True)
 
         # chunk size number widget
         chunk_size = st.number_input('Chunk size:', min_value=100, max_value=8192, value=512)
@@ -160,47 +202,22 @@ if __name__ == "__main__":
     if uploaded_files and 'vs' in st.session_state and is_api_key_valid(api_key):
 
         # user's question text input widget
-        q = st.text_input('Ask one or more questions about the content of the uploaded data:', key='text_input')
+        #q = st.text_input('Ask one or more questions about the content of the uploaded data:', key='text_input')
+        q = text1
         if q: # if the user entered a question and hit enter
             if 'vs' in st.session_state: # if vector store exists in the session state
                 vector_store = st.session_state.vs
                 answer = ask_and_get_answer(vector_store, q, k)
-
+                
                 # text area widget for the LLM answer with flexible height
-                st.text_area('LLM Answer: ', value=answer, height=200)
-
+                
+                st.text_area("INSIGHT 1:", value=answer, height=300)
+                st.caption("QUALITATIVE INSIGHTS")
 
         # Button for new question, on click clear text input
-        if st.session_state.text_input:
-            st.button('New question for same context', on_click=clear_text_input)
-            st.button('New question for new context', on_click=start_over_with_new_document)
+        #if st.session_state.text_input:
+        #    st.button('New question for same context', on_click=clear_text_input)
+        #    st.button('New question for new context', on_click=start_over_with_new_document)
 
     else:
-        st.info('Please upload one or more files to continue.')
-
-    # insert divider
-    st.markdown('---')
-
-    # insert subtitle
-    st.subheader('How it works')
-    st.markdown('''
-                The application is using [OpenAI's gpt-4 model](https://platform.openai.com/docs/models/gpt-4) to answer questions about the content of one or more files that contain text.
-                Uploaded files are chunked into smaller pieces and each piece is embedded using the [LangChain](https://python.langchain.com/docs/get_started/introduction.html) OpenAIEmbeddings() class.
-                The embeddings are temporarily saved in a [Chroma](https://python.langchain.com/docs/modules/data_connection/vectorstores/integrations/chroma) vector store.
-                The user can then ask questions about the content of the data and the application will return an answer. You will need a valid [OpenAI API key](https://help.openai.com/en/articles/4936850-where-do-i-find-my-secret-api-key) to use this application.
-                Using the OpenAI API is not free and you will be charged for the number of tokens used. The application will show you the number of tokens used and the approximate cost of the embeddings as of August 2023.
-                ''')
-    
-    st.subheader('Gotchas')
-    st.markdown('''
-                This is an experimental proof of concept (POC) application and [the results are not guaranteed to be accurate and could be misleading or even wrong](https://becominghuman.ai/why-large-language-models-like-chatgpt-are-bullshit-artists-c4d5bb850852).
-                You can and should never blindly trust the answers given by [Large Language Models (LLMs)](https://en.wikipedia.org/wiki/Large_language_model). Always verify the answers yourself.
-                ''')
-    
-    st.subheader('Source code')
-    st.markdown('''https://github.com/tjaensch/streamlit_openai_chat_with_docs''')
-                
-            
-                
-
-
+        st.divider() #st.info('Please upload one or more files to continue.')
